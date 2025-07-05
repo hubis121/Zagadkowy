@@ -1,16 +1,70 @@
 import os
 import discord
 from dotenv import load_dotenv
+import sys
+import subprocess # Potrzebny do wykonywania komend systemowych
+
+# --- Automatyczna aktualizacja kodu z GitHuba i instalacja bibliotek (przy starcie bota) ---
+print("Sprawdzam aktualizacje kodu z GitHuba...")
+
+# Funkcja pomocnicza do wykonywania komend systemowych
+def run_command_silent(command, cwd=None):
+    try:
+        result = subprocess.run(
+            command,
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            check=True,
+            shell=True
+        )
+        print(f"  [Auto-Update Log] Komenda '{command}' - Sukces.")
+        if result.stdout:
+            # print(f"  [Auto-Update Log] STDOUT: {result.stdout.strip()}") # Opcjonalnie: odkomentuj, żeby widzieć logi
+            pass
+        if result.stderr:
+            print(f"  [Auto-Update Log] STDERR: {result.stderr.strip()}")
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"  [Auto-Update Log] Błąd podczas wykonywania komendy '{command}':")
+        print(f"  [Auto-Update Log] STDOUT: {e.stdout.strip()}")
+        print(f"  [Auto-Update Log] STDERR: {e.stderr.strip()}")
+        return False
+    except Exception as e:
+        print(f"  [Auto-Update Log] Nieoczekiwany błąd: {e}")
+        return False
+
+# Pobierz najnowsze zmiany z GitHuba
+current_dir = os.getcwd()
+
+# Wykonaj git pull
+if run_command_silent('git pull origin master', cwd=current_dir): # Upewnij się, że 'master' to prawidłowa nazwa gałęzi
+    print("Pomyślnie pobrano najnowsze zmiany z GitHuba.")
+else:
+    print("Nie udało się pobrać zmian z GitHuba (może być brak połączenia, brak zmian lub błędy autoryzacji). Kontynuuję z istniejącym kodem.")
+
+# Zainstaluj/zaktualizuj biblioteki
+if os.path.exists(os.path.join(current_dir, 'requirements.txt')):
+    print("Instaluję/aktualizuję biblioteki z requirements.txt...")
+    if run_command_silent('pip install -r requirements.txt', cwd=current_dir):
+        print("Biblioteki zainstalowane/zaktualizowane pomyślnie.")
+    else:
+        print("Nie udało się zainstalować/zaktualizować bibliotek.")
+else:
+    print("Brak pliku requirements.txt. Pomijam instalację bibliotek.")
+
+print("Sprawdzanie aktualizacji zakończone. Uruchamiam bota...")
+# --- Koniec automatycznej aktualizacji ---
+
 
 # Wczytaj zmienne środowiskowe z pliku .env
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 
 # Określ intencje bota
-# Intents.default() to dobry start, ale jeśli chcesz używać np. członków serwera, potrzebujesz Intents.members = True
-# i aktywować to w Discord Developer Portal -> Bot -> Privileged Gateway Intents
 intents = discord.Intents.default()
-intents.message_content = True # Wymagane do czytania zawartości wiadomości
+intents.message_content = True
+intents.members = True
 
 # Inicjalizuj klienta Discorda z określonymi intencjami
 bot = discord.Client(intents=intents)
@@ -26,10 +80,23 @@ async def on_message(message):
     if message.author == bot.user:
         return
 
-    # Jeśli wiadomość to "!hello", odpowiedz "Hello, world!"
-    if message.content == '!hello':
-        await message.channel.send('Hello, world!')
-        print(f'Odpowiedziano na !hello w kanale: {message.channel.name}')
+    # Usunięto komendę !hello
+
+    # Komendy dla administratorów
+    if message.content.startswith('!'):
+        if message.author.guild_permissions.administrator:
+            if message.content == '!restart':
+                await message.channel.send('Restartuję bota...')
+                print('Restartowanie bota...')
+                os.execv(sys.executable, ['python'] + sys.argv)
+            elif message.content == '!start':
+                await message.channel.send('Bot już działa lub zostanie uruchomiony.')
+                print('Komenda !start wywołana. Bot powinien już działać.')
+        else:
+            # Jeśli użytkownik nie jest administratorem i próbuje użyć komendy admina
+            if message.content in ['!restart', '!start']:
+                await message.channel.send(f'{message.author.mention}, nie masz uprawnień do użycia tej komendy.')
+                print(f'Użytkownik {message.author} próbował użyć komendy admina bez uprawnień.')
 
 # Uruchom bota
 bot.run(TOKEN)
