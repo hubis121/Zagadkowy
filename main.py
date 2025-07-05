@@ -39,12 +39,12 @@ def run_shell_command(command, cwd=None):
 async def perform_update_and_restart(channel=None):
     print("Sprawdzam aktualizacje kodu z GitHuba...")
     current_dir = os.getcwd()
-    
+
     # Pobierz najnowsze zmiany z GitHuba
     # UWAGA: Upewnij się, że 'master' to poprawna nazwa gałęzi.
     # Jeśli na GitHubie masz 'main', zmień 'master' na 'main' tutaj.
     success, stdout, stderr = run_shell_command('git pull origin master', cwd=current_dir) 
-    
+
     if success:
         if "Already up to date." not in stdout and "fast-forward" in stdout:
             print("Pomyślnie pobrano najnowsze zmiany z GitHuba. Restartuję bota...")
@@ -55,7 +55,7 @@ async def perform_update_and_restart(channel=None):
                     print("Błąd: Bot nie ma uprawnień do wysyłania wiadomości na kanale podczas aktualizacji.")
                 except Exception as e:
                     print(f"Nieoczekiwany błąd podczas wysyłania wiadomości o aktualizacji: {e}")
-            
+
             # Zainstaluj/zaktualizuj biblioteki po pobraniu zmian
             if os.path.exists(os.path.join(current_dir, 'requirements.txt')):
                 print("Instaluję/aktualizuję biblioteki z requirements.txt...")
@@ -117,7 +117,7 @@ async def on_ready():
     global admin_notification_channel
     print(f'{bot.user} zalogował się!')
     print(f'Bot jest gotowy i działa na {len(bot.guilds)} serwerach.')
-    
+
     if not admin_notification_channel:
         for guild in bot.guilds:
             for channel in guild.text_channels:
@@ -129,7 +129,7 @@ async def on_ready():
                 break
         if not admin_notification_channel:
             print("Ostrzeżenie: Nie znaleziono kanału tekstowego, na który bot może wysyłać wiadomości powiadomień.")
-    
+
     print("Wykonuję początkowe sprawdzenie aktualizacji przy starcie bota...")
     await perform_update_and_restart(admin_notification_channel) 
     print("Początkowe sprawdzenie aktualizacji zakończone. Uruchamiam cykliczne sprawdzanie.")
@@ -163,14 +163,14 @@ async def check_flags_loop():
                 print(f"Nieoczekiwany błąd podczas wysyłania wiadomości o zatrzymaniu: {e}")
         else:
             print("Brak ustawionego kanału admin_notification_channel do wysłania wiadomości o zatrzymaniu. Wiadomość Discord nie zostanie wysłana.")
-        
+
         if os.path.exists(STOP_FLAG_FILE): 
             try:
                 os.remove(STOP_FLAG_FILE)
                 print(f"Usunięto flagę zatrzymania: {STOP_FLAG_FILE}")
             except Exception as e:
                 print(f"Błąd podczas usuwania stop_flag.txt: {e}")
-        
+
         await bot.close()
         print("Bot został zatrzymany przez panel webowy.")
 
@@ -190,14 +190,14 @@ async def check_flags_loop():
                 print(f"Nieoczekiwany błąd podczas wysyłania wiadomości o restarcie: {e}")
         else:
             print("Brak ustawionego kanału admin_notification_channel do wysłania wiadomości o restarcie. Wiadomość Discord nie zostanie wysłana.")
-        
+
         if os.path.exists(RESTART_FLAG_FILE): 
             try:
                 os.remove(RESTART_FLAG_FILE)
                 print(f"Usunięto flagę restartu: {RESTART_FLAG_FILE}")
             except Exception as e:
                 print(f"Błąd podczas usuwania restart_flag.txt: {e}")
-        
+
         os.execv(sys.executable, ['python'] + sys.argv) 
 
 @bot.event
@@ -231,11 +231,11 @@ async def on_message(message):
                 embed.color = discord.Color.green()
                 await countdown_message.edit(embed=embed)
                 await asyncio.sleep(1) 
-                
+
                 await message.channel.send("Bot został zresetowany!")
-                
+
                 os.execv(sys.executable, ['python'] + sys.argv)
-            
+
             elif message.content == '!stop':
                 print('Zatrzymywanie bota - rozpoczęcie odliczania...')
                 embed = discord.Embed(
@@ -253,10 +253,10 @@ async def on_message(message):
                 embed.description = "Zatrzymuję bota teraz!"
                 embed.color = discord.Color.dark_red()
                 await countdown_message.edit(embed=embed)
-                
+
                 await bot.close()
         else:
-            if message.content in ['!restart', '!stop']: 
+            if message.content in ['!restart', '!!stop']: 
                 await message.channel.send(f'{message.author.mention}, nie masz uprawnień do użycia tej komendy.')
                 print(f'Użytkownik {message.author} próbował użyć komendy admina bez uprawnień.')
 
