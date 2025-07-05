@@ -43,7 +43,7 @@ async def perform_update_and_restart(channel=None):
     # Pobierz najnowsze zmiany z GitHuba
     # UWAGA: Upewnij się, że 'master' to poprawna nazwa gałęzi.
     # Jeśli na GitHubie masz 'main', zmień 'master' na 'main' tutaj.
-    success, stdout, stderr = run_shell_command('git pull origin master', cwd=current_dir) 
+    success, stdout, stderr = run_shell_command('git pull origin master', cwd=current_dir)
 
     if success:
         if "Already up to date." not in stdout and "fast-forward" in stdout:
@@ -138,7 +138,7 @@ if not TARGET_VOICE_CHANNEL_ID:
 # Określ intencje bota
 intents = discord.Intents.default()
 intents.message_content = True # Pozostawiamy, bo są komendy tekstowe
-intents.members = True       # KLUCZOWE: Do zliczania wszystkich członków (nie botów)
+intents.members = True         # KLUCZOWE: Do zliczania wszystkich członków (nie botów)
 
 # Inicjalizuj klienta Discorda z określonymi intencjami
 bot = discord.Client(intents=intents)
@@ -161,13 +161,13 @@ async def on_ready():
                 if channel and channel.permissions_for(target_guild.me).send_messages:
                     found_channel = channel
                     break
-            
+
             if not found_channel: # Jeśli nie znaleziono preferowanego, bierzemy pierwszy tekstowy
                 for channel in target_guild.text_channels:
                     if channel.permissions_for(target_guild.me).send_messages:
                         found_channel = channel
                         break
-            
+
             if found_channel:
                 admin_notification_channel = found_channel
                 print(f"Ustawiono domyślny kanał administracyjny na: {admin_notification_channel.name} ({target_guild.name})")
@@ -208,7 +208,7 @@ async def update_voice_channel_name():
                 except Exception as e:
                     print(f"Nieoczekiwany błąd podczas wysyłania wiadomości o błędzie braku kanału: {e}")
             return
-        
+
         if not isinstance(voice_channel, discord.VoiceChannel):
             print(f"Błąd: Kanał o ID {TARGET_VOICE_CHANNEL_ID} nie jest kanałem głosowym.")
             if admin_notification_channel:
@@ -236,17 +236,17 @@ async def update_voice_channel_name():
 
         # --- Logika zliczania wszystkich członków (nie botów) ---
         total_members_not_bots = 0
-        await guild.chunk() 
-        
+        await guild.chunk()
+
         for member in guild.members:
             if not member.bot: # Liczymy tylko użytkowników, którzy nie są botami
                 total_members_not_bots += 1
-        
+
         # --- Użycie nowej funkcji do formatowania liczby ---
         formatted_member_count = format_number_k_m(total_members_not_bots)
-        new_channel_name = f"Widzowie: {formatted_member_count}" 
+        new_channel_name = f"Widzowie: {formatted_member_count}"
         # --- Koniec zmiany logiki zliczania ---
-        
+
         if voice_channel.name != new_channel_name:
             await voice_channel.edit(name=new_channel_name)
             print(f"Zmieniono nazwę kanału '{voice_channel.name}' na '{new_channel_name}'.")
@@ -274,7 +274,7 @@ async def update_voice_channel_name():
         print(f"Nieoczekiwany błąd podczas aktualizacji nazwy kanału: {e}")
 
 
-@tasks.loop(minutes=30) 
+@tasks.loop(minutes=30)
 async def check_for_updates_loop():
     # Dodano sprawdzenie, czy bot jest gotowy przed próbą aktualizacji, aby uniknąć błędów
     if bot.is_ready():
@@ -283,7 +283,7 @@ async def check_for_updates_loop():
     else:
         print("Bot nie jest gotowy, pomijam cykliczne sprawdzanie aktualizacji.")
 
-@tasks.loop(seconds=5) 
+@tasks.loop(seconds=5)
 async def check_flags_loop():
     global admin_notification_channel
 
@@ -292,11 +292,11 @@ async def check_flags_loop():
         if admin_notification_channel:
             embed = discord.Embed(
                 title="Zatrzymywanie Bota",
-                description="Bot zostanie zatrzymany przez panel webowy!", 
+                description="Bot zostanie zatrzymany przez panel webowy!",
                 color=discord.Color.red()
             )
-            try: 
-                await admin_notification_channel.send(embed=embed) 
+            try:
+                await admin_notification_channel.send(embed=embed)
             except discord.errors.Forbidden:
                 print("Błąd: Bot nie ma uprawnień do wysyłania wiadomości na kanale admin_notification_channel.")
             except Exception as e:
@@ -304,7 +304,7 @@ async def check_flags_loop():
         else:
             print("Brak ustawionego kanału admin_notification_channel do wysłania wiadomości o zatrzymaniu. Wiadomość Discord nie zostanie wysłana.")
 
-        if os.path.exists(STOP_FLAG_FILE): 
+        if os.path.exists(STOP_FLAG_FILE):
             try:
                 os.remove(STOP_FLAG_FILE)
                 print(f"Usunięto flagę zatrzymania: {STOP_FLAG_FILE}")
@@ -319,7 +319,7 @@ async def check_flags_loop():
         if admin_notification_channel:
             embed = discord.Embed(
                 title="Restartowanie Bota",
-                description="Bot zostanie zrestartowany przez panel webowy!", 
+                description="Bot zostanie zrestartowany przez panel webowy!",
                 color=discord.Color.orange()
             )
             try:
@@ -331,14 +331,14 @@ async def check_flags_loop():
         else:
             print("Brak ustawionego kanału admin_notification_channel do wysłania wiadomości o restarcie. Wiadomość Discord nie zostanie wysłana.")
 
-        if os.path.exists(RESTART_FLAG_FILE): 
+        if os.path.exists(RESTART_FLAG_FILE):
             try:
                 os.remove(RESTART_FLAG_FILE)
                 print(f"Usunięto flagę restartu: {RESTART_FLAG_FILE}")
             except Exception as e:
                 print(f"Błąd podczas usuwania restart_flag.txt: {e}")
 
-        os.execv(sys.executable, ['python'] + sys.argv) 
+        os.execv(sys.executable, ['python'] + sys.argv)
 
 @bot.event
 async def on_message(message):
@@ -361,12 +361,16 @@ async def on_message(message):
                 print('Restartowanie bota - rozpoczęcie odliczania...')
                 embed = discord.Embed(
                     title="Restartowanie Bota",
-                   embed.description = f"Bot zostanie zrestartowany za **{i}** sekund..."
+                    # description="Bot zostanie zrestartowany za **5** sekund...", # Ta linia była problemem, teraz inicjalizacja z opisem
                     color=discord.Color.orange()
                 )
-                countdown_message = await message.channel.send(embed=embed) 
+                # Przeniesienie dynamicznego ustawienia opisu poza definicję Embed
+                embed.description = f"Bot zostanie zrestartowany za **5** sekund..."
+                countdown_message = await message.channel.send(embed=embed)
 
-                for i in range(4, 0, -1): 
+                for i in range(4, 0, -1):
+                    # Tutaj było `**{i}**`, zmienione na `**{i}**` dla poprawności (choć w Twoim przypadku
+                    # problemem było umiejscowienie linii, a nie samo podwójne nawiasy klamrowe)
                     embed.description = f"Bot zostanie zrestartowany za **{i}** sekund..."
                     await countdown_message.edit(embed=embed)
                     await asyncio.sleep(1)
@@ -374,7 +378,7 @@ async def on_message(message):
                 embed.description = "Restartuję bota teraz!"
                 embed.color = discord.Color.green()
                 await countdown_message.edit(embed=embed)
-                await asyncio.sleep(1) 
+                await asyncio.sleep(1)
 
                 os.execv(sys.executable, ['python'] + sys.argv)
 
@@ -382,12 +386,12 @@ async def on_message(message):
                 print('Zatrzymywanie bota - rozpoczęcie odliczania...')
                 embed = discord.Embed(
                     title="Zatrzymywanie Bota",
-                    description=f"Bot zostanie zatrzymany za **5** sekund...", 
+                    description=f"Bot zostanie zatrzymany za **5** sekund...",
                     color=discord.Color.red()
                 )
-                countdown_message = await message.channel.send(embed=embed) 
+                countdown_message = await message.channel.send(embed=embed)
 
-                for i in range(4, 0, -1): 
+                for i in range(4, 0, -1):
                     embed.description = f"Bot zostanie zatrzymany za **{i}** sekund..."
                     await countdown_message.edit(embed=embed)
                     await asyncio.sleep(1)
@@ -398,7 +402,7 @@ async def on_message(message):
 
                 await bot.close() # Bot zostanie zamknięty
         else:
-            if message.content in ['!restart', '!stop']: 
+            if message.content in ['!restart', '!stop']:
                 await message.channel.send(f'{message.author.mention}, nie masz uprawnień do użycia tej komendy.')
                 print(f'Użytkownik {message.author} próbował użyć komendy admina bez uprawnień.')
 
