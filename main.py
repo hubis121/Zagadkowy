@@ -87,12 +87,12 @@ async def on_message(message):
                 print('Restartowanie bota - rozpoczęcie odliczania...')
                 embed = discord.Embed(
                     title="Restartowanie Bota",
-                    description=f"Bot zostanie zrestartowany za **5** sekund...", # Zmieniono opis początkowy
+                    description=f"Bot zostanie zrestartowany za **5** sekund...", 
                     color=discord.Color.orange()
                 )
-                countdown_message = await message.channel.send(embed=embed) # Wysyłamy od razu z 5
+                countdown_message = await message.channel.send(embed=embed) 
 
-                for i in range(4, 0, -1): # Zaczynamy odliczanie od 4
+                for i in range(4, 0, -1): 
                     embed.description = f"Bot zostanie zrestartowany za **{i}** sekund..."
                     await countdown_message.edit(embed=embed)
                     await asyncio.sleep(1)
@@ -101,6 +101,9 @@ async def on_message(message):
                 embed.color = discord.Color.green()
                 await countdown_message.edit(embed=embed)
                 await asyncio.sleep(1) # Krótka pauza, aby użytkownik zobaczył finalny komunikat
+
+                # Dodane powiadomienie o zresetowaniu
+                await message.channel.send("Bot został zresetowany!")
 
                 os.execv(sys.executable, ['python'] + sys.argv)
 
