@@ -4,3 +4,11 @@
 # Ignore Python cache and bytecode files
 __pycache__/
 *.pyc
+
+# Ignore virtual environment folder (if you use one)
+# venv/
+# env/
+
+# Operating System files
+.DS_Store
+Thumbs.db
