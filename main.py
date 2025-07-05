@@ -87,12 +87,12 @@ async def on_message(message):
                 print('Restartowanie bota - rozpoczęcie odliczania...')
                 embed = discord.Embed(
                     title="Restartowanie Bota",
-                    description="Rozpoczynam restart bota...",
+                    description=f"Bot zostanie zrestartowany za **5** sekund...", # Zmieniono opis początkowy
                     color=discord.Color.orange()
                 )
-                countdown_message = await message.channel.send(embed=embed)
+                countdown_message = await message.channel.send(embed=embed) # Wysyłamy od razu z 5
 
-                for i in range(5, 0, -1):
+                for i in range(4, 0, -1): # Zaczynamy odliczanie od 4
                     embed.description = f"Bot zostanie zrestartowany za **{i}** sekund..."
                     await countdown_message.edit(embed=embed)
                     await asyncio.sleep(1)
@@ -108,12 +108,12 @@ async def on_message(message):
                 print('Zatrzymywanie bota - rozpoczęcie odliczania...')
                 embed = discord.Embed(
                     title="Zatrzymywanie Bota",
-                    description="Rozpoczynam zatrzymywanie bota...",
+                    description=f"Bot zostanie zatrzymany za **5** sekund...", # Zmieniono opis początkowy
                     color=discord.Color.red()
                 )
-                countdown_message = await message.channel.send(embed=embed)
+                countdown_message = await message.channel.send(embed=embed) # Wysyłamy od razu z 5
 
-                for i in range(5, 0, -1):
+                for i in range(4, 0, -1): # Zaczynamy odliczanie od 4
                     embed.description = f"Bot zostanie zatrzymany za **{i}** sekund..."
                     await countdown_message.edit(embed=embed)
                     await asyncio.sleep(1)
