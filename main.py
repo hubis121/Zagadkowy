@@ -361,7 +361,7 @@ async def on_message(message):
                 print('Restartowanie bota - rozpoczęcie odliczania...')
                 embed = discord.Embed(
                     title="Restartowanie Bota",
-                    description=f"Bot zostanie zrestartowany za **5** sekund...", 
+                   embed.description = f"Bot zostanie zrestartowany za **{i}** sekund..."
                     color=discord.Color.orange()
                 )
                 countdown_message = await message.channel.send(embed=embed) 
