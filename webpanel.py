@@ -4,9 +4,9 @@ import asyncio
 import threading
 import time
 import subprocess
-from config import PANEL_IP, PANEL_PORT
 import sys
 import os
+from config import PANEL_IP, PANEL_PORT # Importujemy z config.py
 
 app = Flask(__name__)
 
@@ -101,11 +101,13 @@ HTML_TEMPLATE = """
 def run_bot_in_thread():
     global bot_process, bot_status, countdown_value, countdown_active
     try:
+        # Użyj sys.executable aby zapewnić, że używamy właściwego interpretera Pythona z Termuxa
+        # cwd=os.path.dirname(os.path.abspath(__file__)) zapewnia, że bot.py jest szukany w tym samym katalogu
         bot_process = subprocess.Popen([sys.executable, "bot.py"],
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.PIPE,
                                        text=True,
-                                       cwd=os.path.dirname(os.path.abspath(__file__))) # Upewnij się, że cwd jest poprawne
+                                       cwd=os.path.dirname(os.path.abspath(__file__)))
         bot_status = "starting"
         countdown_active = True
         countdown_value = 5
@@ -114,19 +116,20 @@ def run_bot_in_thread():
             countdown_value = i
             time.sleep(1)
         countdown_active = False
-        bot_status = "running"
-        print("Bot Discord uruchomiony.")
-        bot_process.wait()
-        print("Bot Discord zakończył działanie.")
+
+        # Nie ustawiaj bot_status na running tutaj, to bot.py sam powinien to zrobić po połączeniu
+        print("Bot Discord próbuje się uruchomić. Sprawdź logi bota w tmuxie.")
+        bot_process.wait() # Czekaj na zakończenie procesu bota
+        print("Bot Discord zakończył działanie (proces subprocess się zakończył).")
         bot_status = "stopped"
     except Exception as e:
-        print(f"Błąd podczas uruchamiania bota: {e}")
+        print(f"Błąd podczas uruchamiania bota (subprocess): {e}")
         bot_status = "stopped"
         countdown_active = False
 
 def stop_bot_in_thread():
     global bot_process, bot_status, countdown_value, countdown_active
-    if bot_process and bot_process.poll() is None:
+    if bot_process and bot_process.poll() is None: # Jeśli proces bota nadal działa
         try:
             bot_status = "stopping"
             countdown_active = True
@@ -137,17 +140,18 @@ def stop_bot_in_thread():
                 time.sleep(1)
             countdown_active = False
 
-            bot_process.terminate()
-            bot_process.wait(timeout=5)
-            if bot_process.poll() is None:
+            bot_process.terminate() # Wysyła sygnał zakończenia
+            bot_process.wait(timeout=5) # Daj czas na czyste zakończenie
+            if bot_process.poll() is None: # Jeśli nadal działa po terminacji, zabij
                 bot_process.kill()
             print("Bot Discord zatrzymany.")
             bot_status = "stopped"
         except Exception as e:
             print(f"Błąd podczas zatrzymywania bota: {e}")
-            bot_status = "running"
+            # Jeśli błąd podczas zatrzymywania, ustaw status na running, bo bot mógł nie zostać zatrzymany
+            bot_status = "running" 
     else:
-        bot_status = "stopped"
+        bot_status = "stopped" # Jeśli proces już nie działał, ustaw status na zatrzymany
     bot_process = None
 
 def restart_bot_in_thread():
@@ -163,9 +167,9 @@ def restart_bot_in_thread():
         time.sleep(1)
     countdown_active = False
 
-    stop_bot_in_thread()
-    time.sleep(2)
-    threading.Thread(target=run_bot_in_thread).start()
+    stop_bot_in_thread() # Zatrzymujemy bota
+    time.sleep(2) # Krótka przerwa przed ponownym uruchomieniem
+    threading.Thread(target=run_bot_in_thread).start() # Uruchamiamy bota ponownie
     return "Bot zrestartowany pomyślnie."
 
 
@@ -177,7 +181,7 @@ def index():
                                   countdown_active=countdown_active)
 
 @app.route('/start', methods=['POST'])
-def start_bot():
+def start_bot_route(): # Zmieniona nazwa funkcji, aby uniknąć konfliktu
     global bot_status
     if bot_status == "running" or bot_status == "starting":
         return render_template_string(HTML_TEMPLATE,
@@ -195,7 +199,7 @@ def start_bot():
                                   message_type="success")
 
 @app.route('/stop', methods=['POST'])
-def stop_bot():
+def stop_bot_route(): # Zmieniona nazwa funkcji, aby uniknąć konfliktu
     global bot_status
     if bot_status == "stopped" or bot_status == "stopping":
         return render_template_string(HTML_TEMPLATE,
@@ -213,7 +217,7 @@ def stop_bot():
                                   message_type="info")
 
 @app.route('/restart', methods=['POST'])
-def restart_bot():
+def restart_bot_route(): # Zmieniona nazwa funkcji, aby uniknąć konfliktu
     global bot_status
     if bot_status in ["starting", "stopping", "restarting"]:
         return render_template_string(HTML_TEMPLATE,
