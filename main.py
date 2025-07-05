@@ -80,8 +80,6 @@ async def on_message(message):
     if message.author == bot.user:
         return
 
-    # Usunięto komendę !hello
-
     # Komendy dla administratorów
     if message.content.startswith('!'):
         if message.author.guild_permissions.administrator:
@@ -89,12 +87,15 @@ async def on_message(message):
                 await message.channel.send('Restartuję bota...')
                 print('Restartowanie bota...')
                 os.execv(sys.executable, ['python'] + sys.argv)
-            elif message.content == '!start':
-                await message.channel.send('Bot już działa lub zostanie uruchomiony.')
-                print('Komenda !start wywołana. Bot powinien już działać.')
+            elif message.content == '!stop': # Komenda !stop ponownie dodana
+                await message.channel.send('Zatrzymuję bota...')
+                print('Zatrzymywanie bota...')
+                await bot.close()
+            # Usunięto komendę '!start'
         else:
             # Jeśli użytkownik nie jest administratorem i próbuje użyć komendy admina
-            if message.content in ['!restart', '!start']:
+            # Zaktualizowano listę komend, dla których bot wysyła ostrzeżenie o braku uprawnień
+            if message.content in ['!restart', '!stop']: # Zmieniono na '!restart', '!stop'
                 await message.channel.send(f'{message.author.mention}, nie masz uprawnień do użycia tej komendy.')
                 print(f'Użytkownik {message.author} próbował użyć komendy admina bez uprawnień.')
 
