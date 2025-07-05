@@ -100,6 +100,15 @@ async def perform_update_and_restart(channel=None):
 # --- Koniec funkcji sprawdzania aktualizacji ---
 
 
+# --- Funkcja pomocnicza do formatowania liczby (zaokrąglanie do k, m) ---
+def format_number_k_m(num):
+    if num >= 1_000_000:
+        return f"{num / 1_000_000:.1f}m"
+    elif num >= 1_000:
+        return f"{num / 1_000:.1f}k"
+    else:
+        return str(num)
+
 # Wczytaj zmienne środowiskowe z pliku .env
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
@@ -169,10 +178,6 @@ async def on_ready():
 
 
     print("Wykonuję początkowe sprawdzenie aktualizacji przy starcie bota...")
-    # Tutaj nie wykonujemy restartu po początkowym sprawdzeniu aktualizacji,
-    # aby uniknąć podwójnego restartu, jeśli nic się nie zmieniło.
-    # Wystarczy, że sprawdza się cyklicznie.
-    # await perform_update_and_restart(admin_notification_channel) # Usunięto tę linię
     print("Początkowe sprawdzenie aktualizacji zakończone (lub pominięte). Uruchamiam cykliczne sprawdzanie.")
 
     check_for_updates_loop.start()
@@ -229,16 +234,17 @@ async def update_voice_channel_name():
                     print(f"Nieoczekiwany błąd podczas wysyłania wiadomości o błędzie uprawnień: {e}")
             return
 
-        # --- Zmiana logiki zliczania ---
+        # --- Logika zliczania wszystkich członków (nie botów) ---
         total_members_not_bots = 0
-        # Wymuś pobranie wszystkich członków (dzięki intent.members)
         await guild.chunk() 
         
         for member in guild.members:
             if not member.bot: # Liczymy tylko użytkowników, którzy nie są botami
                 total_members_not_bots += 1
         
-        new_channel_name = f"Widzowie: {total_members_not_bots}" # Nowy format nazwy
+        # --- Użycie nowej funkcji do formatowania liczby ---
+        formatted_member_count = format_number_k_m(total_members_not_bots)
+        new_channel_name = f"Widzowie: {formatted_member_count}" 
         # --- Koniec zmiany logiki zliczania ---
         
         if voice_channel.name != new_channel_name:
@@ -361,7 +367,7 @@ async def on_message(message):
                 countdown_message = await message.channel.send(embed=embed) 
 
                 for i in range(4, 0, -1): 
-                    embed.description = f"Bot zostanie zrestartowany za **{i}}** sekund..."
+                    embed.description = f"Bot zostanie zrestartowany za **{i}** sekund..."
                     await countdown_message.edit(embed=embed)
                     await asyncio.sleep(1)
 
