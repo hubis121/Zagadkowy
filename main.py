@@ -11,6 +11,17 @@ BOT_DIR = os.path.expanduser('~/MojDiscordBot')
 BOT_MAIN_SCRIPT = os.path.join(BOT_DIR, 'main.py')
 SCREEN_SESSION_NAME = 'discord_bot'
 
+# --- Pliki flag ---
+STOP_FLAG_FILE = os.path.join(BOT_DIR, 'stop_flag.txt')
+RESTART_FLAG_FILE = os.path.join(BOT_DIR, 'restart_flag.txt') # Nowa flaga dla restartu z panelu
+
+# --- Globalna zmienna do przechowywania kanału administracyjnego ---
+# Będziemy ją ustawiać dynamicznie, gdy bot otrzyma wiadomość od administratora
+# Możesz też ustawić ID konkretnego kanału tutaj, jeśli wolisz:
+# ADMIN_CHANNEL_ID = 123456789012345678 # Zastąp swoim ID kanału, jeśli chcesz
+admin_notification_channel = None
+
+
 # --- Funkcja pomocnicza do wykonywania komend systemowych ---
 def run_shell_command(command, cwd=None):
     try:
@@ -53,6 +64,11 @@ async def perform_update_and_restart(channel=None):
                     if channel:
                         await channel.send(f"Błąd podczas instalacji bibliotek: ```{lib_stderr}```")
 
+            # Usuń flagę restartu, jeśli istnieje, przed restartem
+            if os.path.exists(RESTART_FLAG_FILE):
+                os.remove(RESTART_FLAG_FILE)
+                print(f"Usunięto flagę restartu: {RESTART_FLAG_FILE}")
+
             os.execv(sys.executable, ['python'] + sys.argv)
         else:
             print("Lokalne repozytorium jest aktualne. Nie ma nowych zmian do pobrania.")
@@ -85,30 +101,92 @@ bot = discord.Client(intents=intents)
 
 @bot.event
 async def on_ready():
+    global admin_notification_channel
     print(f'{bot.user} zalogował się!')
     print(f'Bot jest gotowy i działa na {len(bot.guilds)} serwerach.')
 
+    # Przy starcie, spróbuj ustawić kanał administracyjny na pierwszy kanał tekstowy,
+    # do którego bot ma dostęp na pierwszym serwerze.
+    # TO JEST TYLKO WSTĘPNE USTAWIENIE. Lepsze jest ustawienie przez ADMIN_CHANNEL_ID.
+    if not admin_notification_channel: # Jeśli nie ustawiono przez ID, spróbuj znaleźć
+        for guild in bot.guilds:
+            for channel in guild.text_channels:
+                # Sprawdź, czy bot ma uprawnienia do wysyłania wiadomości
+                if channel.permissions_for(guild.me).send_messages:
+                    admin_notification_channel = channel
+                    print(f"Ustawiono domyślny kanał administracyjny na: {channel.name} ({guild.name})")
+                    break
+            if admin_notification_channel:
+                break
+
     # Wykonaj początkowe sprawdzenie aktualizacji od razu po starcie bota
     print("Wykonuję początkowe sprawdzenie aktualizacji przy starcie bota...")
-    await perform_update_and_restart() 
+    await perform_update_and_restart(admin_notification_channel) 
     print("Początkowe sprawdzenie aktualizacji zakończone. Uruchamiam cykliczne sprawdzanie.")
 
     # Uruchom cykliczne sprawdzanie aktualizacji co 30 minut
     check_for_updates_loop.start()
+    # Uruchom cykliczne sprawdzanie flag co 5 sekund
+    check_flags_loop.start() # Rozpoczynanie pętli do sprawdzania flag
+
 
 @tasks.loop(minutes=30) 
 async def check_for_updates_loop():
-    # admin_channel = bot.get_channel(ADMIN_CHANNEL_ID) 
-    # await perform_update_and_restart(admin_channel) 
-    await perform_update_and_restart()
+    # Użyj kanału ustawionego globalnie
+    await perform_update_and_restart(admin_notification_channel)
     print("Cykliczne sprawdzanie aktualizacji zakończone. Czekam na następne.")
 
+@tasks.loop(seconds=5) # Sprawdzaj co 5 sekund
+async def check_flags_loop():
+    global admin_notification_channel
+
+    # Sprawdzanie flagi STOP
+    if os.path.exists(STOP_FLAG_FILE):
+        print(f"Wykryto flagę zatrzymania: {STOP_FLAG_FILE}")
+        if admin_notification_channel:
+            embed = discord.Embed(
+                title="Zatrzymywanie Bota",
+                description="Bot zostanie zatrzymany przez panel webowy!", 
+                color=discord.Color.red()
+            )
+            await admin_notification_channel.send(embed=embed)
+
+        # Usuń flagę przed zamknięciem
+        os.remove(STOP_FLAG_FILE)
+        print("Usunięto flagę zatrzymania.")
+
+        await bot.close()
+        print("Bot został zatrzymany przez panel webowy.")
+        # sys.exit() # Nie potrzeba sys.exit(), await bot.close() wystarczy.
+
+    # Sprawdzanie flagi RESTART
+    if os.path.exists(RESTART_FLAG_FILE):
+        print(f"Wykryto flagę restartu: {RESTART_FLAG_FILE}")
+        if admin_notification_channel:
+            embed = discord.Embed(
+                title="Restartowanie Bota",
+                description="Bot zostanie zrestartowany przez panel webowy!", 
+                color=discord.Color.orange()
+            )
+            await admin_notification_channel.send(embed=embed)
+
+        # Usuń flagę przed restartem
+        os.remove(RESTART_FLAG_FILE)
+        print("Usunięto flagę restartu.")
+
+        os.execv(sys.executable, ['python'] + sys.argv) # Restart bota
 
 @bot.event
 async def on_message(message):
+    global admin_notification_channel
     # Ignoruj wiadomości wysłane przez samego bota
     if message.author == bot.user:
         return
+
+    # Ustaw kanał administracyjny na kanał, z którego przyszła komenda admina
+    # Jest to lepsze niż globalne szukanie.
+    if message.author.guild_permissions.administrator:
+        admin_notification_channel = message.channel
 
     # Komendy dla administratorów
     if message.content.startswith('!'):
