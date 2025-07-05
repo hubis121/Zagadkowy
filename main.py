@@ -2,7 +2,8 @@ import os
 import discord
 from dotenv import load_dotenv
 import sys
-import subprocess # Potrzebny do wykonywania komend systemowych
+import subprocess
+import asyncio # Dodane do obsługi asynchronicznego odliczania
 
 # --- Automatyczna aktualizacja kodu z GitHuba i instalacja bibliotek (przy starcie bota) ---
 print("Sprawdzam aktualizacje kodu z GitHuba...")
@@ -20,8 +21,7 @@ def run_command_silent(command, cwd=None):
         )
         print(f"  [Auto-Update Log] Komenda '{command}' - Sukces.")
         if result.stdout:
-            # print(f"  [Auto-Update Log] STDOUT: {result.stdout.strip()}") # Opcjonalnie: odkomentuj, żeby widzieć logi
-            pass
+            pass # print(f"  [Auto-Update Log] STDOUT: {result.stdout.strip()}") # Opcjonalnie: odkomentuj, żeby widzieć logi
         if result.stderr:
             print(f"  [Auto-Update Log] STDERR: {result.stderr.strip()}")
         return True
@@ -38,7 +38,7 @@ def run_command_silent(command, cwd=None):
 current_dir = os.getcwd()
 
 # Wykonaj git pull
-if run_command_silent('git pull origin master', cwd=current_dir): # Upewnij się, że 'master' to prawidłowa nazwa gałęzi
+if run_command_silent('git pull origin master', cwd=current_dir):
     print("Pomyślnie pobrano najnowsze zmiany z GitHuba.")
 else:
     print("Nie udało się pobrać zmian z GitHuba (może być brak połączenia, brak zmian lub błędy autoryzacji). Kontynuuję z istniejącym kodem.")
@@ -84,18 +84,49 @@ async def on_message(message):
     if message.content.startswith('!'):
         if message.author.guild_permissions.administrator:
             if message.content == '!restart':
-                await message.channel.send('Restartuję bota...')
-                print('Restartowanie bota...')
+                print('Restartowanie bota - rozpoczęcie odliczania...')
+                embed = discord.Embed(
+                    title="Restartowanie Bota",
+                    description="Rozpoczynam restart bota...",
+                    color=discord.Color.orange()
+                )
+                countdown_message = await message.channel.send(embed=embed)
+
+                for i in range(5, 0, -1):
+                    embed.description = f"Bot zostanie zrestartowany za **{i}** sekund..."
+                    await countdown_message.edit(embed=embed)
+                    await asyncio.sleep(1)
+
+                embed.description = "Restartuję bota teraz!"
+                embed.color = discord.Color.green()
+                await countdown_message.edit(embed=embed)
+                await asyncio.sleep(1) # Krótka pauza, aby użytkownik zobaczył finalny komunikat
+
                 os.execv(sys.executable, ['python'] + sys.argv)
-            elif message.content == '!stop': # Komenda !stop ponownie dodana
-                await message.channel.send('Zatrzymuję bota...')
-                print('Zatrzymywanie bota...')
+
+            elif message.content == '!stop':
+                print('Zatrzymywanie bota - rozpoczęcie odliczania...')
+                embed = discord.Embed(
+                    title="Zatrzymywanie Bota",
+                    description="Rozpoczynam zatrzymywanie bota...",
+                    color=discord.Color.red()
+                )
+                countdown_message = await message.channel.send(embed=embed)
+
+                for i in range(5, 0, -1):
+                    embed.description = f"Bot zostanie zatrzymany za **{i}** sekund..."
+                    await countdown_message.edit(embed=embed)
+                    await asyncio.sleep(1)
+
+                embed.description = "Zatrzymuję bota teraz!"
+                embed.color = discord.Color.dark_red()
+                await countdown_message.edit(embed=embed)
+                await asyncio.sleep(1) # Krótka pauza
+
                 await bot.close()
-            # Usunięto komendę '!start'
         else:
             # Jeśli użytkownik nie jest administratorem i próbuje użyć komendy admina
-            # Zaktualizowano listę komend, dla których bot wysyła ostrzeżenie o braku uprawnień
-            if message.content in ['!restart', '!stop']: # Zmieniono na '!restart', '!stop'
+            if message.content in ['!restart', '!stop']:
                 await message.channel.send(f'{message.author.mention}, nie masz uprawnień do użycia tej komendy.')
                 print(f'Użytkownik {message.author} próbował użyć komendy admina bez uprawnień.')
 
