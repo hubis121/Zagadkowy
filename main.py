@@ -3,7 +3,7 @@ import discord
 from dotenv import load_dotenv
 import sys
 import subprocess
-import asyncio # Dodane do obsługi asynchronicznego odliczania
+import asyncio 
 
 # --- Automatyczna aktualizacja kodu z GitHuba i instalacja bibliotek (przy starcie bota) ---
 print("Sprawdzam aktualizacje kodu z GitHuba...")
@@ -21,7 +21,7 @@ def run_command_silent(command, cwd=None):
         )
         print(f"  [Auto-Update Log] Komenda '{command}' - Sukces.")
         if result.stdout:
-            pass # print(f"  [Auto-Update Log] STDOUT: {result.stdout.strip()}") # Opcjonalnie: odkomentuj, żeby widzieć logi
+            pass 
         if result.stderr:
             print(f"  [Auto-Update Log] STDERR: {result.stderr.strip()}")
         return True
@@ -38,7 +38,7 @@ def run_command_silent(command, cwd=None):
 current_dir = os.getcwd()
 
 # Wykonaj git pull
-if run_command_silent('git pull origin master', cwd=current_dir):
+if run_command_silent('git pull origin master', cwd=current_dir): 
     print("Pomyślnie pobrano najnowsze zmiany z GitHuba.")
 else:
     print("Nie udało się pobrać zmian z GitHuba (może być brak połączenia, brak zmian lub błędy autoryzacji). Kontynuuję z istniejącym kodem.")
@@ -121,7 +121,7 @@ async def on_message(message):
                 embed.description = "Zatrzymuję bota teraz!"
                 embed.color = discord.Color.dark_red()
                 await countdown_message.edit(embed=embed)
-                await asyncio.sleep(1) # Krótka pauza
+                # Usunięto await asyncio.sleep(1) tutaj
 
                 await bot.close()
         else:
