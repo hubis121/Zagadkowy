@@ -4,18 +4,23 @@ from dotenv import load_dotenv
 import sys
 import subprocess
 import asyncio
-from discord.ext import tasks # Dodane do cyklicznych zadań
+from discord.ext import tasks
+
+# --- Konfiguracja ścieżek i nazw sesji ---
+BOT_DIR = os.path.expanduser('~/MojDiscordBot')
+BOT_MAIN_SCRIPT = os.path.join(BOT_DIR, 'main.py')
+SCREEN_SESSION_NAME = 'discord_bot'
 
 # --- Funkcja pomocnicza do wykonywania komend systemowych ---
-def run_command_silent(command, cwd=None):
+def run_shell_command(command, cwd=None):
     try:
         result = subprocess.run(
             command,
-            cwd=cwd,
+            shell=True,
             capture_output=True,
             text=True,
             check=True,
-            shell=True
+            cwd=cwd if cwd else BOT_DIR
         )
         return True, result.stdout.strip(), result.stderr.strip()
     except subprocess.CalledProcessError as e:
@@ -29,7 +34,7 @@ async def perform_update_and_restart(channel=None):
     current_dir = os.getcwd()
 
     # Pobierz najnowsze zmiany z GitHuba
-    success, stdout, stderr = run_command_silent('git pull origin master', cwd=current_dir)
+    success, stdout, stderr = run_shell_command('git pull origin master', cwd=current_dir)
 
     if success:
         if "Already up to date." not in stdout and "fast-forward" in stdout:
@@ -40,7 +45,7 @@ async def perform_update_and_restart(channel=None):
             # Zainstaluj/zaktualizuj biblioteki po pobraniu zmian
             if os.path.exists(os.path.join(current_dir, 'requirements.txt')):
                 print("Instaluję/aktualizuję biblioteki z requirements.txt...")
-                lib_success, lib_stdout, lib_stderr = run_command_silent('pip install -r requirements.txt', cwd=current_dir)
+                lib_success, lib_stdout, lib_stderr = run_shell_command('pip install -r requirements.txt', cwd=current_dir)
                 if lib_success:
                     print("Biblioteki zainstalowane/zaktualizowane pomyślnie.")
                 else:
@@ -52,11 +57,10 @@ async def perform_update_and_restart(channel=None):
         else:
             print("Lokalne repozytorium jest aktualne. Nie ma nowych zmian do pobrania.")
             if "Already up to date." not in stdout and stdout:
-                 print(f"  [Auto-Update Log] Git Output: {stdout}") # Dodatkowe logowanie jeśli nie "up to date" ale nie fast-forward
+                 print(f"  [Auto-Update Log] Git Output: {stdout}")
     else:
         print(f"Nie udało się pobrać zmian z GitHuba. Błąd:\nSTDOUT: {stdout}\nSTDERR: {stderr}")
         if channel:
-            # Opcjonalnie: wysyłaj tylko krytyczne błędy do kanału
             if "Your local changes would be overwritten" in stderr:
                  await channel.send(f"Błąd aktualizacji GitHuba: ```{stderr}```\nProszę zatwierdzić/schować lokalne zmiany.")
             elif "Authentication failed" in stderr:
@@ -70,8 +74,6 @@ async def perform_update_and_restart(channel=None):
 # Wczytaj zmienne środowiskowe z pliku .env
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
-# Opcjonalnie: ID kanału do wysyłania powiadomień o aktualizacjach (możesz usunąć, jeśli nie chcesz powiadomień)
-# ADMIN_CHANNEL_ID = int(os.getenv('ADMIN_CHANNEL_ID')) 
 
 # Określ intencje bota
 intents = discord.Intents.default()
@@ -88,19 +90,16 @@ async def on_ready():
 
     # Wykonaj początkowe sprawdzenie aktualizacji od razu po starcie bota
     print("Wykonuję początkowe sprawdzenie aktualizacji przy starcie bota...")
-    await perform_update_and_restart() # Bez kanału, bo bot mógł jeszcze nie być w pełni gotowy do wysyłki wiadomości
+    await perform_update_and_restart() 
     print("Początkowe sprawdzenie aktualizacji zakończone. Uruchamiam cykliczne sprawdzanie.")
 
     # Uruchom cykliczne sprawdzanie aktualizacji co 30 minut
     check_for_updates_loop.start()
 
-@tasks.loop(minutes=30) # Sprawdzaj co 30 minut
+@tasks.loop(minutes=30) 
 async def check_for_updates_loop():
-    # Możesz określić ID kanału, na który mają być wysyłane powiadomienia, np. administratora
     # admin_channel = bot.get_channel(ADMIN_CHANNEL_ID) 
-    # await perform_update_and_restart(admin_channel) # Przekazuj kanał do powiadomień
-
-    # Na razie bez wysyłania wiadomości na Discorda z tła, tylko logowanie
+    # await perform_update_and_restart(admin_channel) 
     await perform_update_and_restart()
     print("Cykliczne sprawdzanie aktualizacji zakończone. Czekam na następne.")
 
@@ -159,7 +158,7 @@ async def on_message(message):
                 await bot.close()
         else:
             # Jeśli użytkownik nie jest administratorem i próbuje użyć komendy admina
-            if message.content in ['!restart', '!stop']:
+            if message.content in ['!restart', '!stop']: 
                 await message.channel.send(f'{message.author.mention}, nie masz uprawnień do użycia tej komendy.')
                 print(f'Użytkownik {message.author} próbował użyć komendy admina bez uprawnień.')
 
