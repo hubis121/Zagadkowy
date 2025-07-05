@@ -129,7 +129,7 @@ if not TARGET_VOICE_CHANNEL_ID:
 # Określ intencje bota
 intents = discord.Intents.default()
 intents.message_content = True # Pozostawiamy, bo są komendy tekstowe
-intents.members = True       # KLUCZOWE: Do zliczania członków
+intents.members = True       # KLUCZOWE: Do zliczania wszystkich członków (nie botów)
 
 # Inicjalizuj klienta Discorda z określonymi intencjami
 bot = discord.Client(intents=intents)
@@ -169,14 +169,17 @@ async def on_ready():
 
 
     print("Wykonuję początkowe sprawdzenie aktualizacji przy starcie bota...")
-    await perform_update_and_restart(admin_notification_channel) 
-    print("Początkowe sprawdzenie aktualizacji zakończone. Uruchamiam cykliczne sprawdzanie.")
+    # Tutaj nie wykonujemy restartu po początkowym sprawdzeniu aktualizacji,
+    # aby uniknąć podwójnego restartu, jeśli nic się nie zmieniło.
+    # Wystarczy, że sprawdza się cyklicznie.
+    # await perform_update_and_restart(admin_notification_channel) # Usunięto tę linię
+    print("Początkowe sprawdzenie aktualizacji zakończone (lub pominięte). Uruchamiam cykliczne sprawdzanie.")
 
     check_for_updates_loop.start()
     check_flags_loop.start()
     update_voice_channel_name.start() # Rozpocznij pętlę aktualizującą nazwę kanału
 
-# --- Nowa pętla do aktualizacji nazwy kanału głosowego ---
+# --- Pętla do aktualizacji nazwy kanału głosowego ---
 @tasks.loop(minutes=5) # Możesz zmienić częstotliwość (np. seconds=30, minutes=1)
 async def update_voice_channel_name():
     print("Próbuję zaktualizować nazwę kanału głosowego...")
@@ -226,15 +229,17 @@ async def update_voice_channel_name():
                     print(f"Nieoczekiwany błąd podczas wysyłania wiadomości o błędzie uprawnień: {e}")
             return
 
-        member_count = 0
-        # Wymuś pobranie wszystkich członków, jeśli bot nie ma ich w pamięci podręcznej (dzięki intent.members)
+        # --- Zmiana logiki zliczania ---
+        total_members_not_bots = 0
+        # Wymuś pobranie wszystkich członków (dzięki intent.members)
         await guild.chunk() 
         
         for member in guild.members:
             if not member.bot: # Liczymy tylko użytkowników, którzy nie są botami
-                member_count += 1
+                total_members_not_bots += 1
         
-        new_channel_name = f"Widzowie: {member_count}" # Tutaj możesz dostosować format nazwy
+        new_channel_name = f"Widzowie: {total_members_not_bots}" # Nowy format nazwy
+        # --- Koniec zmiany logiki zliczania ---
         
         if voice_channel.name != new_channel_name:
             await voice_channel.edit(name=new_channel_name)
@@ -304,7 +309,7 @@ async def check_flags_loop():
         print("Bot został zatrzymany przez panel webowy.")
 
     if os.path.exists(RESTART_FLAG_FILE):
-        print(f"Wykryto flagę restartu: {REstart_FLAG_FILE}")
+        print(f"Wykryto flagę restartu: {RESTART_FLAG_FILE}")
         if admin_notification_channel:
             embed = discord.Embed(
                 title="Restartowanie Bota",
@@ -337,7 +342,9 @@ async def on_message(message):
 
     # Jeśli użytkownik jest administratorem, ustawiamy jego kanał jako kanał administracyjny dla powiadomień
     if message.author.guild_permissions.administrator:
-        if admin_notification_channel != message.channel: 
+        # Sprawdzamy, czy kanał administracyjny jest już ustawiony
+        # lub czy aktualny kanał wiadomości jest kanałem tekstowym i bot ma na nim uprawnienia do wysyłania
+        if message.channel != admin_notification_channel and isinstance(message.channel, discord.TextChannel) and message.channel.permissions_for(message.guild.me).send_messages:
             admin_notification_channel = message.channel
             print(f"Kanał administracyjny zaktualizowany na: {message.channel.name} ({message.guild.name})")
 
@@ -354,7 +361,7 @@ async def on_message(message):
                 countdown_message = await message.channel.send(embed=embed) 
 
                 for i in range(4, 0, -1): 
-                    embed.description = f"Bot zostanie zrestartowany za **{i}** sekund..."
+                    embed.description = f"Bot zostanie zrestartowany za **{i}}** sekund..."
                     await countdown_message.edit(embed=embed)
                     await asyncio.sleep(1)
 
@@ -362,11 +369,6 @@ async def on_message(message):
                 embed.color = discord.Color.green()
                 await countdown_message.edit(embed=embed)
                 await asyncio.sleep(1) 
-
-                # Nie wysyłamy "Bot został zresetowany!" bo bot się zrestartuje i to nowy bot będzie kontynuował
-                # To powiadomienie jest faktycznie wysyłane z nowej instancji bota w perform_update_and_restart
-                # lub przez web panel.
-                # await message.channel.send("Bot został zresetowany!") # Usunięto to, by uniknąć podwójnych powiadomień
 
                 os.execv(sys.executable, ['python'] + sys.argv)
 
@@ -390,7 +392,7 @@ async def on_message(message):
 
                 await bot.close() # Bot zostanie zamknięty
         else:
-            if message.content in ['!restart', '!stop']: # Upewnij się, że nie ma literówki '!stop'
+            if message.content in ['!restart', '!stop']: 
                 await message.channel.send(f'{message.author.mention}, nie masz uprawnień do użycia tej komendy.')
                 print(f'Użytkownik {message.author} próbował użyć komendy admina bez uprawnień.')
 
