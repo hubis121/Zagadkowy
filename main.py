@@ -108,12 +108,12 @@ async def on_message(message):
                 print('Zatrzymywanie bota - rozpoczęcie odliczania...')
                 embed = discord.Embed(
                     title="Zatrzymywanie Bota",
-                    description=f"Bot zostanie zatrzymany za **5** sekund...", # Zmieniono opis początkowy
+                    description=f"Bot zostanie zatrzymany za **5** sekund...", 
                     color=discord.Color.red()
                 )
-                countdown_message = await message.channel.send(embed=embed) # Wysyłamy od razu z 5
+                countdown_message = await message.channel.send(embed=embed) 
 
-                for i in range(4, 0, -1): # Zaczynamy odliczanie od 4
+                for i in range(4, 0, -1): 
                     embed.description = f"Bot zostanie zatrzymany za **{i}** sekund..."
                     await countdown_message.edit(embed=embed)
                     await asyncio.sleep(1)
@@ -121,7 +121,6 @@ async def on_message(message):
                 embed.description = "Zatrzymuję bota teraz!"
                 embed.color = discord.Color.dark_red()
                 await countdown_message.edit(embed=embed)
-                # Usunięto await asyncio.sleep(1) tutaj
 
                 await bot.close()
         else:
